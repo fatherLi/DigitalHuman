@@ -27,6 +27,7 @@ import com.ruoyi.system.api.model.LoginUser;
 @Component
 public class SysLoginService
 {
+    @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
     @Autowired
     private RemoteUserService remoteUserService;
 

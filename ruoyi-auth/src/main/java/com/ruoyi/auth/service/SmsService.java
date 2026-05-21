@@ -24,6 +24,7 @@ public class SmsService {
     @Autowired
     private RedisService redisService;
 
+    @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
     @Autowired
     private RedisRateLimiterService rateLimiterService;
 

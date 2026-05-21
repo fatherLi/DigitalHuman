@@ -21,6 +21,7 @@ public class DigitalHumanTransactionService {
 
     private static final Logger log = LoggerFactory.getLogger(DigitalHumanTransactionService.class);
 
+    @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
     @Autowired
     private RemoteTokenService remoteTokenService;
 
