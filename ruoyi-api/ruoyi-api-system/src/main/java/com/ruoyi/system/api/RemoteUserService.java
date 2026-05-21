@@ -61,4 +61,15 @@ public interface RemoteUserService
      */
     @PutMapping("/user/recordlogin")
     public R<Boolean> recordUserLogin(@RequestBody SysUser sysUser, @RequestHeader(SecurityConstants.FROM_SOURCE) String source);
+
+    /**
+     * 扣减用户代币/余额 (分布式事务 Seata 支持)
+     *
+     * @param userId 用户ID
+     * @param tokens 要扣减的代币数
+     * @param source 请求来源
+     * @return 结果
+     */
+    @PutMapping("/user/deductToken/{userId}/{tokens}")
+    public R<Boolean> deductToken(@PathVariable("userId") Long userId, @PathVariable("tokens") Long tokens, @RequestHeader(SecurityConstants.FROM_SOURCE) String source);
 }

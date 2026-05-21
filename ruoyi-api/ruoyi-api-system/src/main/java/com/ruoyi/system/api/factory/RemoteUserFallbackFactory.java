@@ -48,6 +48,12 @@ public class RemoteUserFallbackFactory implements FallbackFactory<RemoteUserServ
             {
                 return R.fail("记录用户登录信息失败:" + throwable.getMessage());
             }
+
+            @Override
+            public R<Boolean> deductToken(Long userId, Long tokens, String source)
+            {
+                return R.fail("扣减用户代币失败:" + throwable.getMessage());
+            }
         };
     }
 }

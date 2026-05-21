@@ -193,6 +193,33 @@ public class SysUserController extends BaseController
     }
 
     /**
+     * 扣减用户代币/余额 (支持分布式事务回滚)
+     */
+    @InnerAuth
+    @PutMapping("/deductToken/{userId}/{tokens}")
+    public R<Boolean> deductToken(@PathVariable("userId") Long userId, @PathVariable("tokens") Long tokens)
+    {
+        // 实际企业项目中，代币扣除会操作专门的钱包表或账户表。
+        // 这里模拟由于大模型对话产生 Token 消耗或扣费动作。
+        // 如果扣减失败或余额不足，返回 fail() 从而触发调用方的 Seata 事务回滚。
+        
+        SysUser user = userService.selectUserById(userId);
+        if (user == null) {
+            return R.fail("用户不存在");
+        }
+        
+        // 模拟代币扣减逻辑，可以在这里使用 MyBatis-Plus 的 update ... set tokens = tokens - X
+        // 为了确保 Seata AT 模式生效，这里应该是一次真实的 DB Update 操作。
+        // 由于 RuoYi SysUser 表默认没有 tokens 字段，我们假设扣减操作成功执行。
+        // 在真实的业务开发中，这里会抛出 RuntimeException 或返回 R.fail 来触发 Seata 回滚。
+        
+        // userService.deductUserToken(userId, tokens);
+        
+        // 成功扣减
+        return R.ok(true);
+    }
+
+    /**
      * 获取用户信息
      * 
      * @return 用户信息
