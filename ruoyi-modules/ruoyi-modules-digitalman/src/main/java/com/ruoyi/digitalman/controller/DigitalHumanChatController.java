@@ -29,12 +29,8 @@ public class DigitalHumanChatController {
         // 调用 Service，Service 现在返回 List 或直接循环回调
         // 这里假设 Service 返回一个 Iterator 或者直接在内部做回调
         llmStreamingService.processStreaming(prompt, userId, (token) -> {
-            try {
-                writer.write("data: " + token + "\n\n");
-                writer.flush(); // 强制推送到前端
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            writer.write("data: " + token + "\n\n");
+            writer.flush(); // 强制推送到前端
         });
     }
 }
