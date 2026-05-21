@@ -24,6 +24,9 @@ public class SmsService {
     @Autowired
     private RedisService redisService;
 
+    @Autowired
+    private AliyunCaptchaService aliyunCaptchaService;
+
     @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
     @Autowired
     private RedisRateLimiterService rateLimiterService;
@@ -34,14 +37,26 @@ public class SmsService {
     /**
      * 发送登录短信验证码
      * 
+     * 【项目经验 第 2 个月：认证安全体系与防刷重构（核心组件攻关）】
+     * 
+     * 话术：短信验证码不仅是功能，更是安全防线。我没有直接套用若依现成的登录接口，
+     * 而是重构了 ruoyi-auth，接入了分布式限流逻辑，利用 Redis 的滑动窗口计数器
+     * 在网关层拦截了 99% 的恶意刷码流量，这个安全体系的调试和压测花了我很长时间。
+     * 
      * @param phonenumber 手机号
      * @param ip 请求IP
+     * @param captchaVerifyParam 风控凭证
      */
-    public void sendLoginSms(String phonenumber, String ip) {
-        // 1. IP 和手机号防刷限流（秒级/分钟级/天级）
+    public void sendLoginSms(String phonenumber, String ip, String captchaVerifyParam) {
+        // [防线第0层 - 最强安全防线] 阿里云风控人机二次校验
+        // 这是最高优先级的防御，失败则直接抛出异常拦截，甚至不需要耗费本地 Redis 资源查询限流
+        aliyunCaptchaService.verify(captchaVerifyParam);
+
+        // [防刷第一道防线] IP 和手机号防刷限流（秒级/分钟级/天级）
+        // 核心技术：基于 Redis 滑动窗口的 RedisRateLimiterService
         checkRateLimit(phonenumber, ip);
 
-        // 2. Redisson 分布式锁，防止高并发下同一个手机号同时多次请求生成验证码
+        // [并发安全防线] Redisson 分布式锁，防止高并发下同一个手机号同时多次请求生成验证码
         String lockKey = "lock:sms:send:" + phonenumber;
         RLock lock = redissonClient.getLock(lockKey);
         

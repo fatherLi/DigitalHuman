@@ -24,9 +24,12 @@ public class SmsController {
      * 发送登录短信验证码
      */
     @PostMapping("/sendLoginCode")
-    public R<?> sendLoginCode(@RequestParam("phonenumber") String phonenumber, HttpServletRequest request) {
+    public R<?> sendLoginCode(@RequestParam("phonenumber") String phonenumber, 
+                              @RequestParam("captchaVerifyParam") String captchaVerifyParam,
+                              HttpServletRequest request) {
         String ip = IpUtils.getIpAddr();
-        smsService.sendLoginSms(phonenumber, ip);
+        // 传递风控密钥给后台验证
+        smsService.sendLoginSms(phonenumber, ip, captchaVerifyParam);
         return R.ok("短信发送成功");
     }
 }

@@ -20,8 +20,14 @@ public class DigitalHumanTaskConsumer {
     private static final Logger log = LoggerFactory.getLogger(DigitalHumanTaskConsumer.class);
 
     /**
-     * concurrency="1-5" 动态伸缩消费者数量
-     * ackMode="MANUAL" 手动确认，确保任务成功执行后才从队列中删除
+     * 【项目经验 第 3-4 个月：核心业务的“异步化”与“分布式闭环”】
+     * [第五步：MQ 任务削峰消费与死信保护]
+     * 
+     * 话术：消费者采用手动 ACK (MANUAL) 机制，并配置了并发度 (concurrency="1-3") 控制预取数量。
+     * 当大量直播间高并发请求涌入时，任务会堆积在 RabbitMQ 缓冲池中，根据 GPU 算力按部就班拉取处理，
+     * 有效防止了后端渲染服务器宕机崩溃。如果渲染异常，则拒收并使其进入死信队列供后续补偿处理。
+     * 
+     * 下一步去哪：渲染完成并通过 WebRTC/RTMP 推流给前端
      */
     @RabbitListener(
             queues = RabbitMQConfig.TASK_QUEUE,

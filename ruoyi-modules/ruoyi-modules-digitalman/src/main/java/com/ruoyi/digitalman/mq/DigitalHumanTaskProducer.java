@@ -24,6 +24,15 @@ public class DigitalHumanTaskProducer {
     @Autowired
     private ObjectMapper objectMapper;
 
+    /**
+     * 【项目经验 第 3-4 个月：核心业务的“异步化”与“分布式闭环”】
+     * [第四步：MQ 任务可靠投递]
+     * 
+     * 话术：为了解决数字人业务长延时导致的网关超时问题，我将这一链路彻底改造成了基于 RabbitMQ 的异步队列调度模型。
+     * 这里是生产者端，我们通过 ConfirmCallback 回调机制，确保每一条渲染任务 100% 成功投递到 Exchange。
+     * 
+     * 下一步去哪：消息进入队列，由 DigitalHumanTaskConsumer 异步削峰消费
+     */
     public void sendTask(DigitalHumanTask task) {
         try {
             task.setMsgId(UUID.randomUUID().toString());

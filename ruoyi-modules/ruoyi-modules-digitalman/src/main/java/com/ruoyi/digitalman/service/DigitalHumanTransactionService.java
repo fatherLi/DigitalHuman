@@ -29,8 +29,14 @@ public class DigitalHumanTransactionService {
     private DigitalHumanTaskProducer taskProducer;
 
     /**
-     * 优化后的方案：仅对“扣费”这一原子操作进行分布式事务控制
-     * 数字人任务的发送，通过 MQ 来保证最终一致性，不占用事务锁
+     * 【项目经验 第 3-4 个月：核心业务的“异步化”与“分布式闭环”】
+     * [第三步：分布式事务控制（Seata AT 模式）]
+     * 
+     * 话术：为了保证数据一致性，我还引入了 Seata 分布式事务闭环处理扣费与任务下发。
+     * 优化后的方案：仅对“扣费”这一原子操作进行分布式事务控制。
+     * 数字人任务的发送，通过 MQ 来保证最终一致性，不占用长事务锁，解决了一致性与性能权衡的难题。
+     * 
+     * 下一步去哪：扣款成功后，将组装好的渲染任务发送到 DigitalHumanTaskProducer
      */
     @GlobalTransactional(name = "digitalman-token-deduct", rollbackFor = Exception.class)
     public boolean deductAndPrepareTask(Long userId, Long tokens, String text) {

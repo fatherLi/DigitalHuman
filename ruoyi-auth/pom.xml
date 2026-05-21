@@ -51,6 +51,13 @@
             <groupId>com.ruoyi</groupId>
             <artifactId>ruoyi-common-security</artifactId>
         </dependency>
+
+        <!-- 阿里云验证码 2.0 SDK -->
+        <dependency>
+            <groupId>com.aliyun</groupId>
+            <artifactId>captcha20230305</artifactId>
+            <version>1.1.2</version>
+        </dependency>
         
     </dependencies>
 	
