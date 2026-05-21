@@ -67,7 +67,7 @@ public class SmsService {
             sendToAliyun(phonenumber, code);
 
             // 5. 保存验证码到 Redis，有效期 5 分钟
-            redisService.setCacheObject(verifyKey, code, 5, TimeUnit.MINUTES);
+            redisService.setCacheObject(verifyKey, code, 5L, TimeUnit.MINUTES);
             
             log.info("手机号 {} 验证码发送成功：{}", phonenumber, code);
 

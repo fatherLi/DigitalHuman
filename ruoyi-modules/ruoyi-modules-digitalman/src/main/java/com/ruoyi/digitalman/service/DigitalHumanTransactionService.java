@@ -3,6 +3,7 @@ package com.ruoyi.digitalman.service;
 import com.ruoyi.common.core.constant.SecurityConstants;
 import com.ruoyi.common.core.domain.R;
 import com.ruoyi.common.core.exception.ServiceException;
+import com.ruoyi.digitalman.domain.DigitalHumanTask;
 import com.ruoyi.digitalman.mq.DigitalHumanTaskProducer;
 import com.ruoyi.system.api.RemoteTokenService;
 import io.seata.spring.annotation.GlobalTransactional;
@@ -37,7 +38,7 @@ public class DigitalHumanTransactionService {
         // 1. 原子扣费（只在这个过程中锁数据库）
         R<Boolean> result = remoteTokenService.deductToken(userId, tokens, SecurityConstants.INNER);
 
-        if (result == null || !result.isSuccess()) {
+        if (result == null || R.FAIL == result.getCode()) {
             throw new ServiceException("扣费服务异常，事务自动回滚");
         }
 
@@ -45,7 +46,7 @@ public class DigitalHumanTransactionService {
         // 注意：这里不需要在事务内完成，因为如果这一步发送失败，
         // 你可以在 MQ 生产者端通过 confirm 机制重试，这比锁住整个数据库高效得多
         try {
-            taskProducer.sendTask(userId, text);
+            taskProducer.sendTask(new DigitalHumanTask(userId, text, "auto", "default"));
         } catch (Exception e) {
             log.error("扣费成功但 MQ 发送任务失败，准备手动补偿...");
             // 如果 MQ 发送失败，抛出异常回滚扣费
