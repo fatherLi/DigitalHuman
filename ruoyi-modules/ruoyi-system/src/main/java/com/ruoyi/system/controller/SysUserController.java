@@ -138,6 +138,32 @@ public class SysUserController extends BaseController
     }
 
     /**
+     * 通过手机号获取当前用户信息
+     */
+    @InnerAuth
+    @GetMapping("/infoByPhonenumber/{phonenumber}")
+    public R<LoginUser> infoByPhonenumber(@PathVariable("phonenumber") String phonenumber)
+    {
+        SysUser search = new SysUser();
+        search.setPhonenumber(phonenumber);
+        List<SysUser> list = userService.selectUserList(search);
+        if (StringUtils.isEmpty(list))
+        {
+            return R.fail("手机号未注册或错误");
+        }
+        SysUser sysUser = list.get(0);
+        // 角色集合
+        Set<String> roles = permissionService.getRolePermission(sysUser);
+        // 权限集合
+        Set<String> permissions = permissionService.getMenuPermission(sysUser);
+        LoginUser sysUserVo = new LoginUser();
+        sysUserVo.setSysUser(sysUser);
+        sysUserVo.setRoles(roles);
+        sysUserVo.setPermissions(permissions);
+        return R.ok(sysUserVo);
+    }
+
+    /**
      * 注册用户信息
      */
     @InnerAuth

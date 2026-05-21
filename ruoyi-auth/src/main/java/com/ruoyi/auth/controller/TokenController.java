@@ -35,8 +35,14 @@ public class TokenController
     @PostMapping("login")
     public R<?> login(@RequestBody LoginBody form)
     {
-        // 用户登录
-        LoginUser userInfo = sysLoginService.login(form.getUsername(), form.getPassword());
+        LoginUser userInfo;
+        if ("sms".equals(form.getLoginType())) {
+            // 短信登录
+            userInfo = sysLoginService.smsLogin(form.getPhonenumber(), form.getSmsCode());
+        } else {
+            // 默认账号密码登录
+            userInfo = sysLoginService.login(form.getUsername(), form.getPassword());
+        }
         // 获取登录token
         return R.ok(tokenService.createToken(userInfo));
     }

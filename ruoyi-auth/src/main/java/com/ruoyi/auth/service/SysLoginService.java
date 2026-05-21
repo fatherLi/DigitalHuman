@@ -94,6 +94,68 @@ public class SysLoginService
         passwordService.validate(user, password);
         recordLogService.recordLogininfor(username, Constants.LOGIN_SUCCESS, "登录成功");
         recordLoginInfo(user.getUserId());
+        recordLoginInfo(user.getUserId());
+        return userInfo;
+    }
+
+    /**
+     * 短信登录
+     */
+    public LoginUser smsLogin(String phonenumber, String smsCode)
+    {
+        // 手机号或验证码为空 错误
+        if (StringUtils.isAnyBlank(phonenumber, smsCode))
+        {
+            recordLogService.recordLogininfor(phonenumber, Constants.LOGIN_FAIL, "手机号/验证码必须填写");
+            throw new ServiceException("手机号/验证码必须填写");
+        }
+        
+        // 验证验证码
+        String verifyKey = CacheConstants.CAPTCHA_CODE_KEY + phonenumber;
+        String captcha = Convert.toStr(redisService.getCacheObject(verifyKey));
+        redisService.deleteObject(verifyKey);
+        
+        if (captcha == null)
+        {
+            recordLogService.recordLogininfor(phonenumber, Constants.LOGIN_FAIL, "验证码已失效");
+            throw new ServiceException("验证码已失效");
+        }
+        if (!smsCode.equalsIgnoreCase(captcha))
+        {
+            recordLogService.recordLogininfor(phonenumber, Constants.LOGIN_FAIL, "验证码错误");
+            throw new ServiceException("验证码错误");
+        }
+
+        // IP黑名单校验
+        String blackStr = Convert.toStr(redisService.getCacheObject(CacheConstants.SYS_LOGIN_BLACKIPLIST));
+        if (IpUtils.isMatchedIp(blackStr, IpUtils.getIpAddr()))
+        {
+            recordLogService.recordLogininfor(phonenumber, Constants.LOGIN_FAIL, "很遗憾，访问IP已被列入系统黑名单");
+            throw new ServiceException("很遗憾，访问IP已被列入系统黑名单");
+        }
+        // 查询用户信息
+        R<LoginUser> userResult = remoteUserService.getUserInfoByPhonenumber(phonenumber, SecurityConstants.INNER);
+
+        if (R.FAIL == userResult.getCode())
+        {
+            throw new ServiceException(userResult.getMsg());
+        }
+
+        LoginUser userInfo = userResult.getData();
+        SysUser user = userResult.getData().getSysUser();
+        if (UserStatus.DELETED.getCode().equals(user.getDelFlag()))
+        {
+            recordLogService.recordLogininfor(phonenumber, Constants.LOGIN_FAIL, "对不起，您的账号已被删除");
+            throw new ServiceException("对不起，您的账号：" + phonenumber + " 已被删除");
+        }
+        if (UserStatus.DISABLE.getCode().equals(user.getStatus()))
+        {
+            recordLogService.recordLogininfor(phonenumber, Constants.LOGIN_FAIL, "用户已停用，请联系管理员");
+            throw new ServiceException("对不起，您的账号：" + phonenumber + " 已停用");
+        }
+        
+        recordLogService.recordLogininfor(user.getUserName(), Constants.LOGIN_SUCCESS, "短信登录成功");
+        recordLoginInfo(user.getUserId());
         return userInfo;
     }
 

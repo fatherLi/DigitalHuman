@@ -36,4 +36,43 @@ public class LoginBody
     {
         this.password = password;
     }
+
+    /**
+     * 手机号
+     */
+    private String phonenumber;
+
+    /**
+     * 短信验证码
+     */
+    private String smsCode;
+
+    /**
+     * 登录类型 (password, sms)
+     */
+    private String loginType;
+
+    public String getPhonenumber() {
+        return phonenumber;
+    }
+
+    public void setPhonenumber(String phonenumber) {
+        this.phonenumber = phonenumber;
+    }
+
+    public String getSmsCode() {
+        return smsCode;
+    }
+
+    public void setSmsCode(String smsCode) {
+        this.smsCode = smsCode;
+    }
+
+    public String getLoginType() {
+        return loginType;
+    }
+
+    public void setLoginType(String loginType) {
+        this.loginType = loginType;
+    }
 }
