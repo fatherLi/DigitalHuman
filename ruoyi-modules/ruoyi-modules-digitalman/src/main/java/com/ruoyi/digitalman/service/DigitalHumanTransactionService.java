@@ -4,7 +4,7 @@ import com.ruoyi.common.core.constant.SecurityConstants;
 import com.ruoyi.common.core.domain.R;
 import com.ruoyi.common.core.exception.ServiceException;
 import com.ruoyi.digitalman.mq.DigitalHumanTaskProducer;
-import com.ruoyi.system.api.RemoteUserService;
+import com.ruoyi.system.api.RemoteTokenService;
 import io.seata.spring.annotation.GlobalTransactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +21,7 @@ public class DigitalHumanTransactionService {
     private static final Logger log = LoggerFactory.getLogger(DigitalHumanTransactionService.class);
 
     @Autowired
-    private RemoteUserService remoteUserService;
+    private RemoteTokenService remoteTokenService;
 
     @Autowired
     private DigitalHumanTaskProducer taskProducer;
@@ -35,7 +35,7 @@ public class DigitalHumanTransactionService {
         log.info("【Seata分布式事务】开始执行代币扣减，用户: {}, 扣除数量: {}", userId, tokens);
         
         // 1. 调用远程系统服务扣除代币
-        R<Boolean> result = remoteUserService.deductToken(userId, tokens, SecurityConstants.INNER);
+        R<Boolean> result = remoteTokenService.deductToken(userId, tokens, SecurityConstants.INNER);
         
         if (R.FAIL == result.getCode() || !result.getData()) {
             log.error("【Seata分布式事务】代币扣减失败，抛出异常触发全局回滚。原因: {}", result.getMsg());

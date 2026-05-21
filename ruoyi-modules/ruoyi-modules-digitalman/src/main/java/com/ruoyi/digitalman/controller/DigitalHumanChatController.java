@@ -10,7 +10,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import com.ruoyi.digitalman.service.LlmStreamingService;
 import com.ruoyi.common.security.utils.SecurityUtils;
 
-import java.io.IOException;
+import org.springframework.http.codec.ServerSentEvent;
+import reactor.core.publisher.Flux;
 
 /**
  * 虚拟数字人交互控制层
@@ -28,27 +29,16 @@ public class DigitalHumanChatController {
      * 同时底层会通过 RabbitMQ 异步触发数字人音视频渲染
      *
      * @param question 用户提问
-     * @return SseEmitter 服务器推送事件流
+     * @return Flux<ServerSentEvent<String>> 服务器推送事件流
      */
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter chatStream(@RequestParam("question") String question) {
+    public Flux<ServerSentEvent<String>> chatStream(@RequestParam("question") String question) {
         Long userId = SecurityUtils.getUserId();
-        // 设置 0 表示不超时，由服务端控制结束
-        SseEmitter emitter = new SseEmitter(0L);
         
-        emitter.onCompletion(() -> {
-            // 连接完成清理资源
-        });
-        
-        emitter.onTimeout(emitter::complete);
-        
-        emitter.onError(e -> {
-            emitter.completeWithError(e);
-        });
-
-        // 异步调用大模型及数字人任务分发
-        llmStreamingService.streamChatAndDispatch(userId, question, emitter);
-
-        return emitter;
+        // 异步调用大模型及数字人任务分发，返回纯响应式的 Flux
+        return llmStreamingService.streamChatAndDispatch(userId, question)
+                .map(token -> ServerSentEvent.<String>builder()
+                        .data(token)
+                        .build());
     }
 }
