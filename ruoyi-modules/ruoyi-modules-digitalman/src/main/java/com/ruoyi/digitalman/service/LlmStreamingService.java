@@ -1,18 +1,16 @@
 package com.ruoyi.digitalman.service;
 
+import com.ruoyi.digitalman.domain.DigitalHumanTask;
+import com.ruoyi.digitalman.mq.DigitalHumanTaskProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-import reactor.core.publisher.Flux;
 
-import java.io.IOException;
-import java.time.Duration;
+import java.util.function.Consumer;
 
 /**
- * 大模型流式服务 (WebFlux / SSE)
- * 整合：通义千问流式调用、RabbitMQ异步任务分发、LLM上下文动态缓存
+ * 大模型流式处理与异步任务调度服务
  */
 @Service
 public class LlmStreamingService {
@@ -20,50 +18,36 @@ public class LlmStreamingService {
     private static final Logger log = LoggerFactory.getLogger(LlmStreamingService.class);
 
     @Autowired
-    private LlmContextCacheService contextCacheService;
-
-    @Autowired
-    private DigitalHumanTransactionService transactionService;
+    private DigitalHumanTaskProducer taskProducer;
 
     /**
-     * 流式对话与任务分发 (完全响应式)
+     * @param prompt   用户提问
+     * @param userId   用户ID
+     * @param callback 回调函数，负责将生成的字实时推送给 Controller 的 Writer
      */
-    public Flux<String> streamChatAndDispatch(Long userId, String question) {
-        
-        // 1. 分布式事务入口：扣减代币
-        try {
-            transactionService.deductUserToken(userId, 1L); // 每次对话扣除1个代币
-        } catch (Exception e) {
-            log.error("用户代币扣减失败，事务回滚", e);
-            return Flux.just("[ERROR] 账户代币不足或扣减失败");
+    public void processStreaming(String prompt, Long userId, Consumer<String> callback) {
+        log.info("开始处理用户 {} 的流式对话请求: {}", userId, prompt);
+
+        // 模拟调用大模型吐字逻辑
+        String[] tokens = {"你好", "，", "我", "是", "基于", "若依", "构建的", "数字人", "助手", "。"};
+
+        for (String token : tokens) {
+            // 1. 回调给 Controller 的 PrintWriter，实现前端流式显示
+            callback.accept(token);
+
+            // 2. 将此片段异步推送给 RabbitMQ，交给后台 GPU 引擎处理音视频渲染
+            // mouthShape: "auto" 表示后端自动识别嘴型；style: "formal" 表示播报风格
+            DigitalHumanTask task = new DigitalHumanTask(userId, token, "auto", "formal");
+            taskProducer.sendTask(task);
+
+            try {
+                // 模拟大模型生成每个 Token 的耗时
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.error("流式生成任务被中断", e);
+            }
         }
-
-        // 2. 动态 LLM 上下文管理
-        String contextPrompt = contextCacheService.buildContextPrompt(userId, question);
-        log.info("构建的大模型上下文：{}", contextPrompt);
-
-        // 3. 模拟异步流式调用大模型
-        String mockLlmAnswer = "您好！我是您的虚拟数字人助手。基于您提供的企业级微服务重构方案，我已经成功启动。接下来将为您呈现极低延迟的语音播报与口型渲染同步效果！";
-        
-        // 保存完整回答的 StringBuilder
-        StringBuilder fullAnswer = new StringBuilder();
-
-        return Flux.fromArray(mockLlmAnswer.split(""))
-                .delayElements(Duration.ofMillis(50))
-                .doOnNext(token -> {
-                    // 记录拼接最终答案
-                    fullAnswer.append(token);
-                })
-                .doOnComplete(() -> {
-                    log.info("大模型回答结束，保存上下文并触发数字人渲染");
-                    // 4. 将最终回答存入 Redis 滑窗会话缓存
-                    contextCacheService.saveContext(userId, question, fullAnswer.toString());
-
-                    // 5. 触发亮点二：RabbitMQ 异步削峰
-                    transactionService.sendDigitalHumanTask(userId, fullAnswer.toString());
-                })
-                .doOnError(error -> {
-                    log.error("大模型流式调用异常", error);
-                });
+        log.info("用户 {} 对话处理完成", userId);
     }
 }
