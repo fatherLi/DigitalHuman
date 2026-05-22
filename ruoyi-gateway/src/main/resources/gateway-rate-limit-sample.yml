@@ -1,0 +1,30 @@
+# 企业级网关限流配置示例 (适用于 Nacos 的 ruoyi-gateway-dev.yml)
+# 请将需要限流的路由配置参考以下示例进行修改
+
+spring:
+  cloud:
+    gateway:
+      routes:
+        # 认证中心限流（例如针对短信发送接口）
+        - id: ruoyi-auth
+          uri: lb://ruoyi-auth
+          predicates:
+            - Path=/auth/**
+          filters:
+            # 剥离前缀
+            - StripPrefix=1
+            # 企业级 Redis 滑动窗口网关限流配置
+            - name: RequestRateLimiter
+              args:
+                # 令牌桶每秒填充平均速率 (例如每秒允许 2 次请求)
+                redis-rate-limiter.replenishRate: 2
+                # 令牌桶总容量 (允许在1秒内爆发的最大请求数)
+                redis-rate-limiter.burstCapacity: 5
+                # 每一次请求消耗的令牌数，默认是1
+                redis-rate-limiter.requestedTokens: 1
+                # 使用我们在 RateLimiterConfig 中配置的 IP 限流规则
+                key-resolver: "#{@ipKeyResolver}"
+
+        # 下方可继续添加系统模块、文件模块等的路由配置
+        # - id: ruoyi-system
+        #   ...

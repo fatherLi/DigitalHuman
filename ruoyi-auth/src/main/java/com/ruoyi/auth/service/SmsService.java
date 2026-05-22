@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import com.ruoyi.common.core.constant.CacheConstants;
 import com.ruoyi.common.core.exception.ServiceException;
 import com.ruoyi.common.core.utils.StringUtils;
-import com.ruoyi.common.redis.service.RedisRateLimiterService;
 import com.ruoyi.common.redis.service.RedisService;
 
 /**
@@ -27,9 +26,7 @@ public class SmsService {
     @Autowired
     private AliyunCaptchaService aliyunCaptchaService;
 
-    @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
-    @Autowired
-    private RedisRateLimiterService rateLimiterService;
+
 
     @Autowired
     private RedissonClient redissonClient;
@@ -52,9 +49,7 @@ public class SmsService {
         // 这是最高优先级的防御，失败则直接抛出异常拦截，甚至不需要耗费本地 Redis 资源查询限流
         aliyunCaptchaService.verify(captchaVerifyParam);
 
-        // [防刷第一道防线] IP 和手机号防刷限流（秒级/分钟级/天级）
-        // 核心技术：基于 Redis 滑动窗口的 RedisRateLimiterService
-        checkRateLimit(phonenumber, ip);
+        // [防刷第一道防线] 已迁移至 Gateway Redis限流 (在网关层处理IP和手机号防刷)
 
         // [并发安全防线] Redisson 分布式锁，防止高并发下同一个手机号同时多次请求生成验证码
         String lockKey = "lock:sms:send:" + phonenumber;
@@ -99,28 +94,7 @@ public class SmsService {
         }
     }
 
-    /**
-     * 三层分布式限流防刷
-     */
-    private void checkRateLimit(String phonenumber, String ip) {
-        // 1. 手机号：60秒内最多发送1次
-        String phoneSecKey = "rate_limit:sms:phone:sec:" + phonenumber;
-        if (!rateLimiterService.isAllowed(phoneSecKey, 60000, 1)) {
-            throw new ServiceException("该手机号获取验证码过于频繁，请1分钟后再试");
-        }
 
-        // 2. 手机号：24小时内最多发送10次
-        String phoneDayKey = "rate_limit:sms:phone:day:" + phonenumber;
-        if (!rateLimiterService.isAllowed(phoneDayKey, 86400000, 10)) {
-            throw new ServiceException("该手机号今日获取验证码次数已达上限");
-        }
-
-        // 3. IP地址：1小时内最多发送30次，防止恶意IP肉鸡刷量
-        String ipHourKey = "rate_limit:sms:ip:hour:" + ip;
-        if (!rateLimiterService.isAllowed(ipHourKey, 3600000, 30)) {
-            throw new ServiceException("当前网络环境异常，请稍后再试");
-        }
-    }
 
     /**
      * 模拟对接阿里云短信 API

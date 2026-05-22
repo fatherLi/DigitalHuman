@@ -16,6 +16,9 @@ import com.ruoyi.common.core.utils.ip.IpUtils;
 import com.ruoyi.common.redis.service.RedisService;
 import com.ruoyi.common.security.utils.SecurityUtils;
 import com.ruoyi.system.api.RemoteUserService;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
+import java.util.concurrent.TimeUnit;
 import com.ruoyi.system.api.domain.SysUser;
 import com.ruoyi.system.api.model.LoginUser;
 
@@ -39,6 +42,9 @@ public class SysLoginService
 
     @Autowired
     private RedisService redisService;
+
+    @Autowired
+    private RedissonClient redissonClient;
 
     /**
      * 登录
@@ -231,18 +237,38 @@ public class SysLoginService
             throw new ServiceException("密码长度必须在5到20个字符之间");
         }
 
-        // 注册用户信息
-        SysUser sysUser = new SysUser();
-        sysUser.setUserName(username);
-        sysUser.setNickName(username);
-        sysUser.setPwdUpdateDate(DateUtils.getNowDate());
-        sysUser.setPassword(SecurityUtils.encryptPassword(password));
-        R<?> registerResult = remoteUserService.registerUserInfo(sysUser, SecurityConstants.INNER);
+        // 使用 Redisson 分布式锁，防止高并发下重复注册同一个用户名
+        String lockKey = "lock:user:register:" + username;
+        RLock lock = redissonClient.getLock(lockKey);
+        boolean isLocked = false;
+        
+        try {
+            isLocked = lock.tryLock(2, 10, TimeUnit.SECONDS);
+            if (!isLocked) {
+                throw new ServiceException("系统繁忙或该用户正在注册，请稍后再试");
+            }
+            
+            // 注册用户信息
+            SysUser sysUser = new SysUser();
+            sysUser.setUserName(username);
+            sysUser.setNickName(username);
+            sysUser.setPwdUpdateDate(DateUtils.getNowDate());
+            sysUser.setPassword(SecurityUtils.encryptPassword(password));
+            R<?> registerResult = remoteUserService.registerUserInfo(sysUser, SecurityConstants.INNER);
 
-        if (R.FAIL == registerResult.getCode())
-        {
-            throw new ServiceException(registerResult.getMsg());
+            if (R.FAIL == registerResult.getCode())
+            {
+                throw new ServiceException(registerResult.getMsg());
+            }
+            recordLogService.recordLogininfor(username, Constants.REGISTER, "注册成功");
+            
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new ServiceException("系统异常，请稍后再试");
+        } finally {
+            if (isLocked && lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
         }
-        recordLogService.recordLogininfor(username, Constants.REGISTER, "注册成功");
     }
 }
