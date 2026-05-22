@@ -35,7 +35,7 @@ public class SmsService {
      * 发送登录短信验证码
      * 
      * 【项目经验 第 2 个月：认证安全体系与防刷重构（核心组件攻关）】
-     * 
+     *
      * 话术：短信验证码不仅是功能，更是安全防线。我没有直接套用若依现成的登录接口，
      * 而是重构了 ruoyi-auth，接入了分布式限流逻辑，利用 Redis 的滑动窗口计数器
      * 在网关层拦截了 99% 的恶意刷码流量，这个安全体系的调试和压测花了我很长时间。
@@ -49,7 +49,7 @@ public class SmsService {
         // 这是最高优先级的防御，失败则直接抛出异常拦截，甚至不需要耗费本地 Redis 资源查询限流
         aliyunCaptchaService.verify(captchaVerifyParam);
 
-        // [防刷第一道防线] 已迁移至 Gateway Redis限流 (在网关层处理IP和手机号防刷)
+        // [防刷第一道防线] 已迁移至   Redis限流 (在网关层处理IP和手机号防刷)
 
         // [并发安全防线] Redisson 分布式锁，防止高并发下同一个手机号同时多次请求生成验证码
         String lockKey = "lock:sms:send:" + phonenumber;

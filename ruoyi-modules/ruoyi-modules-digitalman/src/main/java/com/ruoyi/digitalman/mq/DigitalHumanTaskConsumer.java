@@ -31,7 +31,7 @@ public class DigitalHumanTaskConsumer {
      */
     @RabbitListener(
             queues = RabbitMQConfig.TASK_QUEUE,
-            concurrency = "1-3",
+            concurrency = "10-20",
             ackMode = "MANUAL"
     )
     public void receiveTask(String payload, Message message, Channel channel) throws IOException {
