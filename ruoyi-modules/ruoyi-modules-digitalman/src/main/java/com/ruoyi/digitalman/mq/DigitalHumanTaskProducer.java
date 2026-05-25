@@ -52,6 +52,41 @@ public class DigitalHumanTaskProducer {
         }
     }
 
+    /**
+     * 纯响应式发 MQ：不阻塞任何线程，发送后异步等待 ConfirmCallback
+     */
+    public reactor.core.publisher.Mono<Void> sendTaskReactive(DigitalHumanTask task) {
+        return reactor.core.publisher.Mono.create(sink -> {
+            try {
+                task.setMsgId(UUID.randomUUID().toString());
+                String messagePayload = objectMapper.writeValueAsString(task);
+                CorrelationData correlationData = new CorrelationData(task.getMsgId());
+
+                // 利用 CompletableFuture 非阻塞等待 MQ 投递确认
+                correlationData.getFuture().whenComplete((confirm, ex) -> {
+                    if (ex != null) {
+                        sink.error(new ServiceException("MQ Error: " + ex.getMessage()));
+                    } else if (confirm != null && confirm.isAck()) {
+                        sink.success();
+                    } else {
+                        sink.error(new ServiceException("MQ NACK: " + (confirm != null ? confirm.getReason() : "null")));
+                    }
+                });
+
+                // convertAndSend 仅仅是写缓冲，微秒级不阻塞
+                rabbitTemplate.convertAndSend(
+                        RabbitMQConfig.DIGITALMAN_EXCHANGE,
+                        RabbitMQConfig.TASK_ROUTING_KEY,
+                        messagePayload,
+                        correlationData
+                );
+            } catch (Exception e) {
+                log.error("MQ 消息序列化或发送异常", e);
+                sink.error(new ServiceException("数字人渲染任务下发失败"));
+            }
+        });
+    }
+
     @PostConstruct
     public void registerCallbacks() {
         rabbitTemplate.setConfirmCallback((correlationData, ack, cause) -> {
